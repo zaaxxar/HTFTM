@@ -1,0 +1,61 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments (never commit — rebuild from requirements)
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ---- Secrets / env ----
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+
+# ---- Recorded media & stream output (do NOT commit audio) ----
+# Scoped to output directories so we never accidentally ignore TypeScript (*.ts) source.
+recordings/
+storage/data/
+streaming/hls/
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.m3u8
+
+# ---- Service data volumes ----
+postgres-data/
+minio-data/
+*.sqlite
+*.sqlite3
+
+# ---- OS / editor cruft ----
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/
+!.vscode/extensions.json
