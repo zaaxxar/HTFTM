@@ -59,3 +59,8 @@ Desktop.ini
 .idea/
 .vscode/
 !.vscode/extensions.json
+
+# ---- Claude ----
+.claude
+.claude/
+CLAUDE
