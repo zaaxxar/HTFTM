@@ -1,0 +1,4 @@
+# RELAY server runtime deps (M1 scaffold — minimal).
+# Feature deps (openai, asyncpg/sqlalchemy, boto3/minio, ffmpeg bindings) land at M2+.
+fastapi==0.115.6
+uvicorn[standard]==0.32.1

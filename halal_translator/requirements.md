@@ -51,6 +51,7 @@ RELAY captures the speech of a single on-site speaker, translates it to a target
 | FR-12 | The listener page shall show connection status (live / not live / reconnecting). | Should |
 | FR-13 | The listener page shall display live English subtitles, driven by the translation transcript deltas. | Must |
 | FR-14 | After an event, the system shall generate a structured English article with a short summary from the translated transcript, using a text AI model, for publishing alongside the audio. | Should |
+| FR-15 | At session start the operator shall be able to set two independent per-event opt-out flags on the speaker's behalf: **save recording** and **generate article** (both default on). When *save recording* is off, the system shall not persist the original or translated recordings (FR-6/FR-7/FR-8); when *generate article* is off, the system shall not generate the post-event article (FR-14). The server must honor both flags. | Must |
 | FR-F1 | *(Future)* Support additional target languages, selectable per listener. | Future |
 | FR-F3 | *(Future)* Capture and broadcast video. | Future |
 | FR-F4 | *(Future)* Automated publishing of recordings to the public website. | Future |
@@ -102,10 +103,10 @@ RELAY captures the speech of a single on-site speaker, translates it to a target
 | OQ-1 | ✅ **Resolved:** Capture via **phone** running the capture page (picks up the speaker through the room / loudspeakers). Sound-board line feed is a later quality upgrade. | — |
 | OQ-2 | Confirm the concurrent-listener number to design and load-test against (500 ceiling?). | Sizing and test plan |
 | OQ-3 | ✅ **Resolved:** **Yes** — live English subtitles at launch (FR-13), plus a post-event AI-generated article + summary from the transcript (FR-14). | — |
-| OQ-4 | Listener access: open to anyone on the WiFi, a simple event code, or a login? | Auth design, and migration-to-public posture |
+| OQ-4 | ✅ **Resolved:** Listener access is **open to anyone on the WiFi** — no event code, no login — keeping the simple tune-in model. The nginx auth hook stays reserved for later public exposure (M5). | — |
 | OQ-5 | ✅ **Resolved:** Export both recordings as **MP3**, saved locally; operator manually uploads to the (likely WordPress) public site. Automated publishing deferred (FR-F4). | — |
 | OQ-6 | Typical event duration? | File sizes, storage planning, session limits |
-| OQ-7 | What consent/recording-notice is required for the speaker and audience? | Legal/privacy (NFR-8) |
+| OQ-7 | ✅ **Resolved:** The speaker is **informed verbally** that they are being recorded and published. The speaker may opt out of (a) saving the recording and (b) generating the post-event article; these are two independent per-event flags the operator sets at session start and the server honors (FR-15). | — |
 | OQ-8 | Is there a human operator running start/stop, or should the system auto-detect when the speaker begins? | Operator UX |
 | OQ-9 | Should listeners also be able to hear the **original Arabic**, or English only? | Stream count, listener UI |
 

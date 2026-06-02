@@ -170,7 +170,7 @@ Transcript **deltas** arrive from the OpenAI session alongside the translated au
 
 Lifecycle and state surfacing (FR-10, FR-11). Detailed in M5; pinned here because the schema and state machine depend on it.
 
-- `POST /api/events` `{name, sourceLang:"ar", targetLang:"en", voice:"marin"}` → creates an event (`status=created`).
+- `POST /api/events` `{name, sourceLang:"ar", targetLang:"en", voice:"marin", saveRecording:true, generateArticle:true}` → creates an event (`status=created`). `saveRecording` and `generateArticle` are the two independent **per-event opt-out flags** the operator sets on the speaker's behalf at session start (FR-15); both default **on**. M1 fixes only the contract — **enforcement** lands at M2 (suppress persisting recordings) and M6 (suppress article generation).
 - `POST /api/events/{id}/start` → `armed` then `live`; arms the pipeline.
 - `POST /api/events/{id}/stop` → `stopping` → finalize → `stopped`.
 - `GET /api/events` / `GET /api/events/{id}` → list/detail incl. recordings + state.
@@ -195,6 +195,8 @@ CREATE TABLE events (
     target_lang      TEXT        NOT NULL DEFAULT 'en',
     openai_voice     TEXT        NOT NULL DEFAULT 'marin'
                      CHECK (openai_voice IN ('marin', 'cedar')),
+    save_recording   BOOLEAN     NOT NULL DEFAULT true,   -- FR-15 opt-out; enforced at M2 (recording)
+    generate_article BOOLEAN     NOT NULL DEFAULT true,   -- FR-15 opt-out; enforced at M6 (article)
     status           TEXT        NOT NULL DEFAULT 'created'
                      CHECK (status IN ('created','armed','live','stopping','stopped','failed')),
     started_at       TIMESTAMPTZ,           -- set when first going live
@@ -262,6 +264,7 @@ CREATE INDEX idx_articles_event ON articles(event_id);
 **Notes**
 - Text + `CHECK` instead of native enums → simpler, portable migrations (NFR-6).
 - `transcript_segments` and `articles` exist in the schema now because their contracts (subtitle cues, article input) are part of this design; they are populated in M2+/post-event, not at M1.
+- `save_recording` / `generate_article` are the FR-15 per-event opt-out flags (default on). M1 fixes the column + payload contract only; **enforcement** is implemented at M2 (skip persisting recordings) and M6 (skip article generation).
 - Storage path convention: `bucket=relay-recordings`, `object_key=events/<event_id>/{original|translated}.{mp3|pcm}`.
 
 ---
@@ -327,9 +330,9 @@ Restated from `CLAUDE.md` so the design is self-contained; the server is the **o
 ## 9. Security & portability posture (launch)
 
 - **Secrets:** `OPENAI_API_KEY` only in the server's environment via `.env` (gitignored); `.env.example` documents the required vars. Never in client code or git (golden rule #1, NFR-7).
-- **LAN-only:** no TLS/auth at launch; nginx is structured so TLS termination + an auth hook + rate limiting can be switched on before public exposure without re-architecture (NFR-7, M5). Listener access policy (open WiFi vs event code vs login) is **TBD — OQ-4**; the launch default is open-on-LAN.
+- **LAN-only:** no TLS/auth at launch; nginx is structured so TLS termination + an auth hook + rate limiting can be switched on before public exposure without re-architecture (NFR-7, M5). Listener access is **open-on-LAN** — no event code/login (OQ-4 resolved); the nginx auth hook stays reserved for public exposure (M5).
 - **Portability:** everything in Docker; storage via the S3 API (MinIO) so a cloud move needs no rewrite (NFR-6).
-- **Privacy:** the recording/consent notice process is **TBD — OQ-7** (process/legal, not code).
+- **Privacy:** the speaker is **informed verbally** of recording/publication (OQ-7 resolved) and may opt out of saving the recording and/or generating the article via the per-event flags (FR-15).
 
 ---
 
@@ -337,10 +340,11 @@ Restated from `CLAUDE.md` so the design is self-contained; the server is the **o
 
 | Ref | Item | Design default until resolved |
 |---|---|---|
-| OQ-2 | Concurrent-listener target (≤500?) | Design for 500; HLS fan-out via nginx makes this an nginx/network sizing question (M4 load test). |
-| OQ-4 | Listener access (open / code / login) | Open-on-LAN at launch; an auth hook point is reserved in nginx (M5). |
-| OQ-9 | Expose the original Arabic stream too? | English-only at launch; the `/live/<lang>/` layout already accommodates adding `/live/ar/` later. |
-| — | Subtitle transport | Polled `subs.json` sidecar (see §4.5); segmented WebVTT is the future upgrade. |
+| OQ-2 | Concurrent-listener target (≤500?) | **Open.** Design for 500; HLS fan-out via nginx makes this an nginx/network sizing question (M4 load test). |
+| OQ-4 | Listener access (open / code / login) | ✅ **Resolved:** open-on-LAN, no code/login; nginx auth hook reserved for public exposure (M5). |
+| OQ-7 | Speaker consent / recording notice | ✅ **Resolved:** verbal notice; per-event opt-out of recording and article (FR-15; flags in §5/§6). |
+| OQ-9 | Expose the original Arabic stream too? | **Open.** English-only at launch; the `/live/<lang>/` layout already accommodates adding `/live/ar/` later. |
+| — | Subtitle transport | **Decided.** Polled `subs.json` sidecar (see §4.5); segmented WebVTT is the future upgrade. |
 
 ---
 
