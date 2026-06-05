@@ -24,6 +24,10 @@ Phased delivery mapped onto the software development lifecycle. Each milestone h
 - Server writes the original and translated audio to storage with metadata
 - **Exit gate:** speak Arabic → translated English audio file + original file saved correctly; tone preservation spot-checked by a bilingual reviewer
 
+**Progress (M2 in flight):**
+- *Checkpoint A — translation loop:* capture page streams mic PCM16/24k/mono over `/ws/capture`; server opens the real `gpt-realtime-translate` session and writes translated audio to a local `.wav` for audition (no MinIO/Postgres yet). Concrete OpenAI event contract pinned in [design §8.1](./docs/design.md). — *implemented; pending review.*
+- *Checkpoint B — recording + metadata:* `events` row on start (honoring `save_recording`), both original + translated audio to MinIO, `recordings` + `transcript_segments` rows in Postgres. — *pending.*
+
 ## M3 — Broadcast (LL-HLS + listener page)
 **SDLC stage:** Implementation
 - Pipe translated audio into ffmpeg → LL-HLS segments

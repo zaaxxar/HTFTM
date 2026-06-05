@@ -319,11 +319,36 @@ Restated from `CLAUDE.md` so the design is self-contained; the server is the **o
 | Transport | WebSocket (server ↔ OpenAI) |
 | Audio I/O | PCM16, 24 kHz, mono, both directions |
 | Turn model | **Continuous** — no `response.create`, no client-commit turns; keep appending audio (incl. silence), handle output events as they arrive |
-| Voice | `marin` (default) or `cedar`; **locks after first audio** in a session |
+| Voice | **Not configurable** on this endpoint. `gpt-realtime-translate` uses *dynamic voice adaptation* — the translated speech follows the **source speaker's** tone/pitch/style, which directly serves tone preservation (FR-2). (marin/cedar are `gpt-realtime`/`gpt-realtime-2` only; sending `voice` is rejected and, per §8.1, drops the whole `session.update`.) Verified at M2. |
 | Transcript | Deltas stream alongside audio → drive subtitles (FR-13) + persisted to `transcript_segments` |
 | Shutdown | Send `session.close`, keep reading until `session.closed`, *then* close the socket (don't drop draining audio) |
 | Sessions | **One per language** (launch: one), never per listener (golden rule #4) |
 | Public-exposure later | Add the `OpenAI-Safety-Identifier` header (M5 / post-launch) |
+
+### 8.1 Concrete event contract (pinned at M2)
+
+Confirmed against the OpenAI realtime-translation guide and implemented in `server/app/translate.py`.
+
+- **Connect:** `wss://api.openai.com/v1/realtime/translations?model=gpt-realtime-translate`, header `Authorization: Bearer $OPENAI_API_KEY` (add `OpenAI-Safety-Identifier` only for public exposure).
+- **Configure (client → server):** the session is configured around the **target output language** — there is no source-language field (source is auto-detected) and **no voice field** (any unknown field rejects the whole `session.update`, silently dropping the language — this was caught at M2).
+  ```json
+  {"type": "session.update",
+   "session": {"audio": {"output": {"language": "en"}}}}
+  ```
+- **Append audio (client → server):** continuous; no commit, no `response.create`.
+  ```json
+  {"type": "session.input_audio_buffer.append", "audio": "<base64 PCM16/24k/mono>"}
+  ```
+- **Server → server events consumed:**
+  | Event | Use |
+  |---|---|
+  | `session.output_audio.delta` (`delta` = base64 PCM16) | translated audio → record + (M3) HLS |
+  | `session.output_transcript.delta` (`delta` = text) | interim target transcript → subtitles + `transcript_segments` (interim) |
+  | `session.output_transcript.done` (`transcript` = text) | final target transcript → `transcript_segments` (final) |
+  | `session.input_transcript.delta` | source (Arabic) transcript — logged; not persisted (schema stores the *translated* transcript) |
+  | `session.closed` | drain complete |
+  | `error` | logged |
+- **Shutdown (client → server):** `{"type": "session.close"}`, then read until `session.closed`.
 
 ---
 

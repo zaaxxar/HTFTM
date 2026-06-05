@@ -20,8 +20,14 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-relay-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-relay_dev_minio_pw}
       RELAY_RECORDINGS_BUCKET: ${RELAY_RECORDINGS_BUCKET:-relay-recordings}
+      # OpenAI realtime translation session (design §8). No voice param: the translate
+      # endpoint adapts the voice to the source speaker (preserves tone, FR-2).
+      RELAY_SOURCE_LANG: ${RELAY_SOURCE_LANG:-ar}
+      RELAY_TARGET_LANG: ${RELAY_TARGET_LANG:-en}
+      RELAY_SCRATCH_DIR: /scratch                     # M2 Checkpoint A verification output
     volumes:
       - hls:/srv/hls                                  # translated audio -> LL-HLS (written at M3)
+      - ./scratch:/scratch                            # gitignored; local .wav for auditioning (M2-A)
     depends_on:
       postgres:
         condition: service_healthy
