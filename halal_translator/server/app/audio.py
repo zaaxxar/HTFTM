@@ -15,6 +15,8 @@ class WavWriter:
 
     def __init__(self, path: str, *, sample_rate: int = 24000, channels: int = 1) -> None:
         self.path = path
+        self.sample_rate = sample_rate
+        self.channels = channels
         self._wf = wave.open(path, "wb")
         self._wf.setnchannels(channels)
         self._wf.setsampwidth(2)  # PCM16 = 2 bytes/sample
@@ -27,8 +29,8 @@ class WavWriter:
 
     @property
     def duration_seconds(self) -> float:
-        # mono PCM16 @ sample_rate; 2 bytes/sample
-        return self.bytes_written / 2 / self._wf.getframerate()
+        # PCM16 = 2 bytes/sample; valid before and after close().
+        return self.bytes_written / 2 / self.channels / self.sample_rate
 
     def close(self) -> None:
         self._wf.close()

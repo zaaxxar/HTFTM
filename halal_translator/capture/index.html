@@ -11,6 +11,11 @@
     main { max-width: 32rem; width: 100%; }
     h1 { margin: 0 0 .25rem; font-size: 1.6rem; letter-spacing: .02em; }
     .sub { color: #888; margin: 0 0 1.5rem; }
+    .opts { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; justify-content: center;
+            align-items: center; margin-bottom: 1.25rem; font-size: .9rem; }
+    .opts input[type="text"] { padding: .4rem .6rem; border-radius: .4rem; border: 1px solid #8884;
+            background: transparent; color: inherit; font: inherit; }
+    .opts label { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
     button { font-size: 1.05rem; font-weight: 600; padding: .7rem 1.6rem; border-radius: 999px;
              border: 0; cursor: pointer; color: #fff; background: #2563eb; }
     button.stop { background: #dc2626; }
@@ -31,6 +36,12 @@
   <main>
     <h1>RELAY — Capture Station</h1>
     <p class="sub">Phone microphone → server → live translation (Arabic → English)</p>
+
+    <div class="opts">
+      <input id="eventName" type="text" placeholder="Event name (optional)" />
+      <label><input id="saveRecording" type="checkbox" checked /> Save recording</label>
+      <label><input id="generateArticle" type="checkbox" checked /> Generate article</label>
+    </div>
 
     <div>
       <button id="toggle">Start</button>
@@ -58,6 +69,13 @@
     const statusEl = document.getElementById("status");
     const metaEl = document.getElementById("meta");
     const transcriptEl = document.getElementById("transcript");
+    const eventNameEl = document.getElementById("eventName");
+    const saveRecordingEl = document.getElementById("saveRecording");
+    const generateArticleEl = document.getElementById("generateArticle");
+
+    function setOptionsDisabled(disabled) {
+      eventNameEl.disabled = saveRecordingEl.disabled = generateArticleEl.disabled = disabled;
+    }
 
     let running = false;
     let ws = null, audioCtx = null, mediaStream = null, sourceNode = null, workletNode = null;
@@ -132,8 +150,12 @@
             type: "hello", clientId: crypto.randomUUID(),
             format: "pcm_s16le", sampleRate: TARGET_RATE, channels: 1,
             userAgent: navigator.userAgent, swVersion: "m2",
+            // M2 opt-out flags (FR-15) carried on hello until the operator UI (M5)
+            eventName: eventNameEl.value.trim() || undefined,
+            saveRecording: saveRecordingEl.checked,
+            generateArticle: generateArticleEl.checked,
           }));
-          setStatus("Live", "live");
+          setStatus(saveRecordingEl.checked ? "Live · recording" : "Live · not recording", "live");
           metaEl.textContent = `ctx ${audioCtx.sampleRate} Hz → ${TARGET_RATE} Hz · streaming`;
         };
         ws.onmessage = (ev) => onServerMessage(ev.data);
@@ -152,6 +174,7 @@
         running = true;
         toggleBtn.textContent = "Stop";
         toggleBtn.classList.add("stop");
+        setOptionsDisabled(true);
       } catch (err) {
         console.error(err);
         setStatus("Mic/setup error", "err");
@@ -164,10 +187,30 @@
       running = false;
       toggleBtn.textContent = "Start";
       toggleBtn.classList.remove("stop");
-      try { if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: "bye", reason: "user_stop" })); ws.close(); } } catch (_) {}
+      setOptionsDisabled(false);
+      setStatus("Finishing…");
+
+      // 1) Stop producing new audio so the WS send buffer can only drain, not grow.
       try { if (sourceNode) sourceNode.disconnect(); } catch (_) {}
       try { if (workletNode) workletNode.disconnect(); } catch (_) {}
       try { if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+
+      // 2) Flush every queued audio frame to the server BEFORE closing, so the
+      //    archived original isn't clipped (wait for bufferedAmount → 0).
+      if (ws) {
+        const deadline = Date.now() + 5000;
+        while (ws.readyState === WebSocket.OPEN && ws.bufferedAmount > 0 && Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        try {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "bye", reason: "user_stop" }));
+            ws.close();
+          }
+        } catch (_) {}
+      }
+
+      // 3) Tear down audio.
       try { if (audioCtx) await audioCtx.close(); } catch (_) {}
       ws = audioCtx = mediaStream = sourceNode = workletNode = null;
       if (!statusEl.classList.contains("err")) setStatus("Stopped");

@@ -57,7 +57,7 @@ The docs currently live at `halal_translator/{requirements.md, roadmap.md, wiki.
 - **Transport:** WebSocket (this is a server-side broadcast-ingest pipeline).
 - **Audio format:** PCM16, 24 kHz, mono, in and out.
 - **Translation sessions are continuous and do NOT use the assistant turn lifecycle:** do not call `response.create`, do not wait for the client to commit a turn. Keep appending audio continuously, including silence between phrases, and handle output events as they arrive.
-- **Output voice:** prefer `marin` or `cedar` (best quality). The voice locks after the first audio is emitted in a session.
+- **Output voice:** **not configurable on the translation endpoint.** `gpt-realtime-translate` uses *dynamic voice adaptation* — the translated speech follows the source speaker's tone/pitch/style (which serves tone preservation, FR-2). Do **not** send a `voice` field in `session.update`; it's an unknown parameter and (because it's rejected) drops the whole update, including the target language. `marin`/`cedar` belong to `gpt-realtime`/`gpt-realtime-2`, not this endpoint. (Verified at M2; see `docs/design.md` §8/§8.1.)
 - **Transcript deltas** stream back alongside audio — use them to drive the live English subtitles (FR-13).
 - **Shutdown:** send `session.close` and keep reading events until `session.closed` before closing the socket (closing early drops audio still draining).
 - **Later (public exposure):** set the `OpenAI-Safety-Identifier` header with a stable, privacy-preserving value.

@@ -1,6 +1,10 @@
 # RELAY server runtime deps.
-# M2 (core translate-and-record loop): + websockets client for the OpenAI session.
-# Later deps (asyncpg/sqlalchemy, minio/boto3) land at Checkpoint B.
+# M2 (core translate-and-record loop):
+#   websockets — OpenAI realtime translation session (Checkpoint A)
+#   asyncpg    — Postgres metadata (Checkpoint B)
+#   minio      — S3-compatible blob storage for recordings (Checkpoint B)
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
 websockets==12.0
+asyncpg==0.30.0
+minio==7.2.10

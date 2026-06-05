@@ -22,6 +22,13 @@ class Settings:
     # which suits tone-preservation (FR-2). marin/cedar are gpt-realtime(-2) only.
     safety_identifier: str | None     # OpenAI-Safety-Identifier (public exposure only)
 
+    # Persistence (Checkpoint B): Postgres metadata + MinIO blob storage
+    database_url: str
+    minio_endpoint: str
+    minio_access_key: str
+    minio_secret_key: str
+    recordings_bucket: str
+
     # Local verification output for Checkpoint A (gitignored scratch dir)
     scratch_dir: str
 
@@ -41,5 +48,12 @@ def load_settings() -> Settings:
         source_lang=os.environ.get("RELAY_SOURCE_LANG", "ar"),
         target_lang=os.environ.get("RELAY_TARGET_LANG", "en"),
         safety_identifier=(os.environ.get("OPENAI_SAFETY_IDENTIFIER") or None),
+        database_url=os.environ.get(
+            "DATABASE_URL", "postgresql+asyncpg://relay:relay_dev_pw@postgres:5432/relay"
+        ),
+        minio_endpoint=os.environ.get("MINIO_ENDPOINT", "http://minio:9000"),
+        minio_access_key=os.environ.get("MINIO_ROOT_USER", "relay-minio"),
+        minio_secret_key=os.environ.get("MINIO_ROOT_PASSWORD", "relay_dev_minio_pw"),
+        recordings_bucket=os.environ.get("RELAY_RECORDINGS_BUCKET", "relay-recordings"),
         scratch_dir=os.environ.get("RELAY_SCRATCH_DIR", "/scratch"),
     )

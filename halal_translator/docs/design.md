@@ -116,7 +116,7 @@ All text frames are JSON objects with a `type` discriminator.
 
 | `type` | Fields | When | Meaning |
 |---|---|---|---|
-| `hello` | `clientId` (str), `format` (`"pcm_s16le"`), `sampleRate` (`24000`), `channels` (`1`), `userAgent` (str), `swVersion` (str) | once, immediately after connect | Announces capture and **declares audio format**. Server validates; mismatch → `error` + close. |
+| `hello` | `clientId` (str), `format` (`"pcm_s16le"`), `sampleRate` (`24000`), `channels` (`1`), `userAgent` (str), `swVersion` (str); **optional (M2 bridge):** `eventName` (str), `saveRecording` (bool, default true), `generateArticle` (bool, default true) | once, immediately after connect | Announces capture and **declares audio format**. Server validates; mismatch → `error` + close. The optional FR-15 opt-out flags ride on `hello` until the operator API/UI owns them (M5); the server creates the `events` row from them at session start. |
 | `heartbeat` | `t` (epoch ms) | every ~5 s | Keepalive + rough clock for drift checks. |
 | `mute` / `unmute` | — | on demand | Capture intends to pause/resume sending audio (binary frames simply stop/resume; this just annotates intent for the operator UI). |
 | `bye` | `reason` (str) | before client-initiated close | Graceful disconnect (e.g. page unload). |
